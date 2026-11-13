@@ -1,0 +1,31 @@
+{
+  "name": "client-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Booking, payments and newsletters for one-person service businesses. Next.js + TypeScript + SQLite.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "NODE_OPTIONS=--disable-warning=ExperimentalWarning next dev",
+    "build": "NODE_OPTIONS=--disable-warning=ExperimentalWarning next build",
+    "start": "NODE_OPTIONS=--disable-warning=ExperimentalWarning next start",
+    "setup": "node scripts/setup.ts",
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed-demo.ts",
+    "test": "TZ=America/Los_Angeles node --disable-warning=ExperimentalWarning --test 'tests/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "nodemailer": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.9.0",
+    "@types/nodemailer": "^7.0.0"
+  }
+}

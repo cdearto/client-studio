@@ -1,0 +1,4 @@
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+code { font-size: .85em; padding: .1rem .35rem; border-radius: 4px; background: rgb(127 127 127 / .18); }
