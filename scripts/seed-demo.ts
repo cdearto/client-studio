@@ -1,7 +1,8 @@
 // Fills the database with realistic fake data so every Studio screen has something
 // to show: templates, weekly hours, clients in every state (paid, awaiting
-// payment, "Venmo sent", due to renew), past and upcoming sessions, subscribers
-// and a draft newsletter. All names, emails and numbers are fictional.
+// payment, "Venmo sent", due to renew), past and upcoming sessions, subscribers,
+// a draft newsletter and six months of website traffic. All names, emails and
+// numbers are fictional.
 //   npm run seed              add demo data (refuses if clients exist)
 //   npm run seed -- --reset   wipe everything first
 import { existsSync } from 'node:fs';
@@ -12,10 +13,12 @@ const { newToken, saveRules } = await import('../lib/booking.ts');
 const { starterLayouts } = await import('../lib/newsletter-render.ts');
 const { brand } = await import('../lib/newsletter.ts');
 const { config } = await import('../lib/config.ts');
+const { insertHit } = await import('../lib/tracking.ts');
+const { dayKey } = await import('../lib/format.ts');
 
 const db = getDb();
 if (process.argv.includes('--reset')) {
-  for (const t of ['newsletter_sends', 'newsletters', 'subscribers', 'sessions', 'packages', 'clients', 'templates', 'hours', 'time_off', 'settings']) db.exec(`DELETE FROM ${t}`);
+  for (const t of ['hits', 'newsletter_sends', 'newsletters', 'subscribers', 'sessions', 'packages', 'clients', 'templates', 'hours', 'time_off', 'settings']) db.exec(`DELETE FROM ${t}`);
   db.exec('DELETE FROM sqlite_sequence');
 } else if (scalar('SELECT COUNT(*) FROM clients') > 0) {
   console.log("There's already data here. Use --reset to replace it with demo data.");
@@ -93,4 +96,45 @@ const monthly = starterLayouts(brand(), config.ownerName).monthly;
 run("INSERT INTO newsletters (subject, preheader, blocks, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
   monthly.subject, 'Open spots, new hours and what’s coming up', JSON.stringify(monthly.blocks), t - 7200, t - 3600);
 
-console.log(`Demo data added: ${people.length} clients, ${templates.length} templates, ${scalar('SELECT COUNT(*) FROM subscribers WHERE unsubscribed_at IS NULL')} subscribers.`);
+// ---- Website traffic for Analytics: ~180 days, growing, quieter on Sundays ---------
+// Deterministic randomness, so every seed looks the same.
+let state = 42;
+const rand = () => ((state = (state * 1664525 + 1013904223) % 4294967296) / 4294967296);
+const pick = <T extends string>(weights: Record<T, number>): T => {
+  const entries = Object.entries(weights) as [T, number][];
+  let r = rand() * entries.reduce((sum, [, w]) => sum + w, 0);
+  for (const [k, w] of entries) if ((r -= w) <= 0) return k;
+  return entries[0][0];
+};
+const sources = { Instagram: 34, Google: 26, Direct: 22, Facebook: 7, Yelp: 6, newsletter: 5 };
+const referrers: Record<string, string> = { Instagram: 'https://l.instagram.com/', Google: 'https://www.google.com/', Facebook: 'https://m.facebook.com/', Yelp: 'https://www.yelp.com/' };
+const devices = { Mobile: 72, Desktop: 24, Tablet: 4 };
+const places = { 'United States|CA|Springfield': 40, 'United States|CA|Shelbyville': 18, 'United States|CA|Capital City': 12, 'United States|NV|Ogdenville': 5, 'Canada||Toronto': 2 };
+const clicks = { signup: 30, book: 25, email: 12, phone: 10, instagram: 18, none: 420 };
+let hits = 0;
+db.exec('BEGIN');
+for (let d = 179; d >= 0; d--) {
+  const day0 = new Date(); day0.setHours(0, 0, 0, 0); day0.setDate(day0.getDate() - d);
+  let base = 8 + (179 - d) * 0.09;
+  if (day0.getDay() === 0) base *= 0.55;
+  if (d === 9) base *= 2.4;   // the day a newsletter went out
+  const visitors = Math.max(1, Math.round(base * (0.8 + rand() * 0.4)));
+  for (let v = 0; v < visitors; v++) {
+    const device = pick(devices);
+    const [country, region, city] = pick(places).split('|');
+    const source = d === 9 && rand() < 0.6 ? 'newsletter' : pick(sources);
+    const who = { visitor: `demo-${d}-${v}`, device, browser: device === 'Desktop' ? 'Chrome' : 'Safari', os: device === 'Desktop' ? 'macOS' : 'iOS', country, region, city, isBot: false };
+    let ts = day0.getTime() / 1000 + 7 * 3600 + Math.floor(rand() * 14 * 3600);
+    const views = rand() > 0.6 ? 2 : 1;
+    for (let k = 0; k < views; k++, ts += 40) {
+      insertHit({ ...who, ts, day: dayKey(new Date(ts * 1000)), type: 'pageview', name: '', path: '/',
+        referrer: k ? config.siteUrl : referrers[source] ?? '', source: k ? 'Internal' : source });
+      hits++;
+    }
+    const click = pick(clicks);
+    if (click !== 'none') { insertHit({ ...who, ts, day: dayKey(new Date(ts * 1000)), type: 'event', name: click, path: '/', referrer: '', source: 'Internal' }); hits++; }
+  }
+}
+db.exec('COMMIT');
+
+console.log(`Demo data added: ${people.length} clients, ${templates.length} templates, ${scalar('SELECT COUNT(*) FROM subscribers WHERE unsubscribed_at IS NULL')} subscribers, ${hits.toLocaleString('en-US')} website hits.`);

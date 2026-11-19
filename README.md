@@ -1,6 +1,6 @@
 # Client Studio
 
-A self-hosted app for one-person service businesses (coaches, trainers, tutors) to **sell session packages, get paid, let clients book their own times, and send newsletters**, all from a phone.
+A self-hosted app for one-person service businesses (coaches, trainers, tutors) to **sell session packages, get paid, let clients book their own times, send newsletters, and see how their website is doing**, all from a phone.
 
 **Next.js 16 · React 19 · TypeScript · SQLite (Node's built-in `node:sqlite`)**. The runtime dependencies are Next, React and Nodemailer.
 
@@ -17,6 +17,7 @@ A self-hosted app for one-person service businesses (coaches, trainers, tutors) 
 - **Bookable hours**: weekly hours, time off, buffer between sessions, notice period, booking horizon, cancellation window.
 - **Calendar feed**: every session, including client bookings, in the owner's phone calendar.
 - **Group texts**: pick clients (quick picks: this week, unpaid, due to renew…), write one message with `{first}`, and send each as a private text in one tap per person.
+- **Analytics**: cookieless website analytics in its own tab: visitors, pageviews, conversions and conversion rate (each compared with the period before), a daily chart, top pages, traffic sources (Instagram, Google, `?utm_source=`…), clicks, devices and approximate location, over 7, 30 or 90 days, with a CSV export. Track the business's real site with one script tag (see below).
 - **Newsletter builder**: heading, text, image, button, divider, spacer and social blocks with a live phone/desktop preview, autosaving drafts, test sends, a batched send queue, and CAN-SPAM-compliant unsubscribe (including RFC 8058 one-click).
 
 **For the client (`/pay/<token>`, no account needed)**
@@ -24,6 +25,8 @@ A self-hosted app for one-person service businesses (coaches, trainers, tutors) 
 - Add sessions to their calendar and get email confirmations.
 
 ![Newsletter builder](docs/newsletter-builder.png)
+
+![Analytics](docs/analytics.png)
 
 ## Try it locally
 
@@ -40,22 +43,40 @@ Open <http://localhost:3000/studio>. A client's view is linked from any package 
 
 For a real install run `npm run setup` without `--demo`. Every setting is in [`.env.example`](.env.example).
 
+## Website analytics
+
+The demo home page already has the tracker. For the business's real website, add one line:
+
+```html
+<script src="https://your-studio-host/track.js" defer></script>
+```
+
+It records a pageview per page plus clicks: `mailto:` and `tel:` links, social and outbound links, and anything tagged `data-track="name"` (links, buttons, or a `<form>` on submit). `window.track('name')` works from your own code. The event names in `CONVERSION_EVENTS` (default `signup,book,contact,email,phone`) count as conversions.
+
+How privacy works:
+- **No cookies or storage.** A visitor ID is an HMAC of IP + user agent + **today's date**, keyed with `APP_SECRET`. It can't be reversed or follow anyone across days.
+- **No raw IPs are stored and no outside lookups are made.** Location comes from the host's geo headers (Vercel, Cloudflare) when present.
+- **Clients' private links are never recorded.** The tracker isn't on `/pay/…` pages, and ingestion strips the token from any `/pay/…` path or referrer that arrives anyway. The owner's own Studio screens are never counted either.
+- Bots are filtered, ingestion is rate-limited per address, and hits older than ~13 months are pruned.
+
 ## How it's built
 
 ```
 app/
   studio/            the owner's app: Server Components + Server Actions per area
     packages/        new/renew/edit form, detail page, actions
-    clients/ hours/ templates/ texts/ newsletter/
+    clients/ hours/ templates/ texts/ newsletter/ analytics/
     feed.ics/        private calendar feed
   pay/[token]/       client page, booking actions, .ics download
   unsubscribe/ api/unsubscribe/   unsubscribe page + one-click endpoint
-  page.tsx           demo home page with the newsletter signup
+  api/track/ track.js/   analytics ingestion + the drop-in tracker script
+  page.tsx           demo home page with the newsletter signup and tracker
 lib/
   booking.ts         rules, availability, booking/cancel, payment state, messages
   newsletter-render.ts  block model + email HTML/text (shared by server and the live preview)
   newsletter.ts      mailing list, unsubscribe signing, send queue
   studio.ts          read models for the Studio screens
+  analytics.ts tracking.ts tracker.ts   Analytics queries, beacon → row, the browser tracker
   db.ts auth.ts session.ts email.ts ics.ts format.ts form.ts
 scripts/             setup + demo seed (run directly by Node)
 tests/               node:test, ported from the original PHP suite
