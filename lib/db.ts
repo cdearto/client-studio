@@ -63,6 +63,16 @@ const SCHEMA = `
     status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed')), sent_at INTEGER,
     PRIMARY KEY (newsletter_id, email)
   );
+  -- Website analytics: one row per pageview or tracked click (see lib/tracking.ts).
+  CREATE TABLE IF NOT EXISTS hits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts INTEGER NOT NULL, day TEXT NOT NULL, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '',
+    path TEXT NOT NULL DEFAULT '', referrer TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '',
+    visitor TEXT NOT NULL, device TEXT NOT NULL DEFAULT '', browser TEXT NOT NULL DEFAULT '', os TEXT NOT NULL DEFAULT '',
+    country TEXT NOT NULL DEFAULT '', region TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '',
+    is_bot INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_hits_day ON hits(day, type);
   -- One row per recent attempt, for login throttling and public-form rate limits.
   CREATE TABLE IF NOT EXISTS attempts (scope TEXT NOT NULL, key TEXT NOT NULL, ts INTEGER NOT NULL);
   CREATE INDEX IF NOT EXISTS idx_attempts ON attempts(scope, key, ts);

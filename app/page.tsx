@@ -1,5 +1,7 @@
-// Demo home page. Stands in for the business's real website: newsletter signup and a link to Studio.
+// Demo home page. Stands in for the business's real website: newsletter signup, a link to Studio,
+// and the analytics tracker (visits and clicks show up in Studio → Analytics).
 import Link from 'next/link';
+import { Tracker } from '@/components/Tracker.tsx';
 import { config } from '@/lib/config.ts';
 import { SignupForm } from './SignupForm.tsx';
 import './home.css';
@@ -8,6 +10,7 @@ export default function Home() {
   const mail = `mailto:${config.notifyEmail}`;
   return (
     <div className="home">
+      <Tracker />
       <div className="wrap">
         <header>
           <span className="mark">{config.businessName}</span>
@@ -23,7 +26,7 @@ export default function Home() {
           <section className="card" id="contact">
             <h2>Book a session</h2>
             <p>Get in touch at <a href={mail}>{config.notifyEmail}</a> and you’ll get a package link by text.</p>
-            <a className="btn" href={mail}>Email us</a>
+            <a className="btn" href={mail} data-track="book">Email us</a>
           </section>
 
           <section className="card" id="signup">

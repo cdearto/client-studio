@@ -17,7 +17,7 @@ const { dayKey, parseLocal } = await import('../lib/format.ts');
 
 /** A clean database with deterministic rules: no notice period, a long horizon. */
 export function reset(): void {
-  for (const t of ['sessions', 'packages', 'clients', 'templates', 'hours', 'time_off', 'settings', 'newsletter_sends', 'newsletters', 'subscribers', 'attempts'])
+  for (const t of ['sessions', 'packages', 'clients', 'templates', 'hours', 'time_off', 'settings', 'newsletter_sends', 'newsletters', 'subscribers', 'attempts', 'hits'])
     getDb().exec(`DELETE FROM ${t}`);
   saveRules({ notice_hours: 0, days_ahead: 180 });
 }

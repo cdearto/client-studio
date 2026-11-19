@@ -23,6 +23,10 @@ export const config = {
     }
     return out;
   },
+  /** Event names (data-track="…" or window.track('…')) that count as conversions on the Analytics tab. */
+  get conversions(): string[] {
+    return env('CONVERSION_EVENTS', 'signup,book,contact,email,phone').split(',').map((s) => s.trim()).filter(Boolean);
+  },
   get adminUser() { return env('ADMIN_USER', 'admin'); },
   get passwordHash() { return env('ADMIN_PASSWORD_HASH'); },
   get secret() {
